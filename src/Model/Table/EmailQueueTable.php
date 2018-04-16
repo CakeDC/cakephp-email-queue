@@ -4,7 +4,7 @@ namespace EmailQueue\Model\Table;
 
 use Cake\Core\Configure;
 use Cake\Database\Expression\QueryExpression;
-use Cake\Database\Schema\Table as Schema;
+use Cake\Database\Schema\TableSchema;
 use Cake\Database\Type;
 use Cake\I18n\FrozenTime;
 use Cake\ORM\Table;
@@ -166,11 +166,11 @@ class EmailQueueTable extends Table
     /**
      * Sets the column type for template_vars and headers to json.
      *
-     * @param Schema $schema The table description
+     * @param TableSchema $schema The table description
      *
-     * @return Schema
+     * @return TableSchema
      */
-    protected function _initializeSchema(Schema $schema)
+    protected function _initializeSchema(TableSchema $schema)
     {
         $type = Configure::read('EmailQueue.serialization_type') ?: 'email_queue.serialize';
         $schema->columnType('template_vars', $type);
