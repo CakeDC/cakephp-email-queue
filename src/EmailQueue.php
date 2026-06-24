@@ -24,7 +24,7 @@ class EmailQueue
      * - config : the name of the email config to be used for sending
      * @return bool
      */
-    public static function enqueue($to, array $data, array $options = [])
+    public static function enqueue(mixed $to, array $data, array $options = []): bool
     {
         return TableRegistry::getTableLocator()
             ->get('EmailQueue.EmailQueue')

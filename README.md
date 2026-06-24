@@ -9,7 +9,7 @@ email templates and watching the result.
 
 ## Requirements ##
 
-* CakePHP 4.x
+* CakePHP 5.x
 
 ## Installation ##
 
@@ -77,14 +77,18 @@ and queue a new one by storing the correct data:
 It is possible to preview emails that are still in the queue, this is very handy during development to check if the rendered
 email looks at it should; no need to queue the email again, just make the changes to the template and run the preview again:
 
-	# bin/cake EmailQueue.preview
+	# bin/cake email_queue preview
 
 ### Sending emails
 
 Emails should be sent using bundled Sender command, use `-h` modifier to
 read available options
 
-	# bin/cake EmailQueue.sender -h
+	# bin/cake email_queue sender -h
+
+To clear locks after a crash:
+
+	# bin/cake email_queue clear_locks
 
 You can configure this command to be run under a cron or any other tool
 you wish to use.

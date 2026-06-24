@@ -3,10 +3,10 @@ declare(strict_types=1);
 
 namespace EmailQueue\Test\TestCase\Model\Table;
 
-use Cake\I18n\FrozenTime;
+use Cake\Collection\Collection;
+use Cake\I18n\DateTime;
 use Cake\ORM\TableRegistry;
 use Cake\TestSuite\TestCase;
-use DateTime;
 use EmailQueue\EmailQueue;
 use EmailQueue\Model\Table\EmailQueueTable;
 use EmailQueue\Test\Fixture\EmailQueueFixture;
@@ -21,9 +21,9 @@ class EmailQueueTest extends TestCase
     /**
      * Fixtures.
      *
-     * @var array
+     * @var array<class-string>
      */
-    public $fixtures = [
+    protected array $fixtures = [
         EmailQueueFixture::class,
     ];
 
@@ -50,7 +50,7 @@ class EmailQueueTest extends TestCase
             [
             'subject' => 'Hey!',
             'headers' => ['X-FOO' => 'bar', 'X-BAZ' => 'thing'],
-            ]
+            ],
         );
 
         $this->assertEquals(++$count, $this->EmailQueue->find()->count());
@@ -78,12 +78,12 @@ class EmailQueueTest extends TestCase
             'from_name' => null,
             'from_email' => null,
         ];
-        $sendAt = new FrozenTime($result['send_at']);
+        $sendAt = new DateTime($result['send_at']);
         unset($result['id'], $result['created'], $result['modified'], $result['send_at']);
         $this->assertEquals($expected, $result);
         $this->assertEquals(gmdate('Y-m-d H'), $sendAt->format('Y-m-d H'));
 
-        $date = new FrozenTime('2019-01-11 11:14:15');
+        $date = new DateTime('2019-01-11 11:14:15');
         $this->EmailQueue->enqueue(['a@example.com', 'b@example.com'], ['a' => 'b'], ['send_at' => $date, 'subject' => 'Hey!']);
         $this->assertEquals($count + 2, $this->EmailQueue->find()->count());
 
@@ -104,7 +104,7 @@ class EmailQueueTest extends TestCase
         $result = $this->EmailQueue->enqueue(
             'c@example.com',
             ['a' => 'c'],
-            ['subject' => 'Hey', 'send_at' => $date, 'config' => 'other', 'template' => 'custom', 'layout' => 'email']
+            ['subject' => 'Hey', 'send_at' => $date, 'config' => 'other', 'template' => 'custom', 'layout' => 'email'],
         );
         $this->assertTrue($result);
         $email = $this->EmailQueue
@@ -124,7 +124,7 @@ class EmailQueueTest extends TestCase
     public function testGetBatch()
     {
         $batch = $this->EmailQueue->getBatch();
-        $this->assertEquals([1, 2, 3], collection($batch)->extract('id')->toList());
+        $this->assertEquals([1, 2, 3], (new Collection($batch))->extract('id')->toList());
 
         //At this point previous batch should be locked and next call should return an empty set
         $batch = $this->EmailQueue->getBatch();
@@ -133,7 +133,7 @@ class EmailQueueTest extends TestCase
         //Let's change send_at date for email-6 to get it on a batch
         $this->EmailQueue->updateAll(['send_at' => '2011-01-01 00:00'], ['id' => 6]);
         $batch = $this->EmailQueue->getBatch();
-        $this->assertEquals([6], collection($batch)->extract('id')->toList());
+        $this->assertEquals([6], (new Collection($batch))->extract('id')->toList());
     }
 
     /**
@@ -144,7 +144,7 @@ class EmailQueueTest extends TestCase
         $batch = $this->EmailQueue->getBatch();
         $this->assertNotEmpty($batch);
         $this->assertEmpty($this->EmailQueue->getBatch());
-        $this->EmailQueue->releaseLocks(collection($batch)->extract('id')->toList());
+        $this->EmailQueue->releaseLocks((new Collection($batch))->extract('id')->toList());
         $this->assertEquals($batch, $this->EmailQueue->getBatch());
     }
 
@@ -158,7 +158,7 @@ class EmailQueueTest extends TestCase
         $this->assertEmpty($this->EmailQueue->getBatch());
         $this->EmailQueue->clearLocks();
         $batch = $this->EmailQueue->getBatch();
-        $this->assertEquals([1, 2, 3, 5], collection($batch)->extract('id')->toList());
+        $this->assertEquals([1, 2, 3, 5], (new Collection($batch))->extract('id')->toList());
     }
 
     /**
@@ -188,7 +188,7 @@ class EmailQueueTest extends TestCase
         $result = EmailQueue::enqueue(
             'c@example.com',
             ['a' => 'c'],
-            ['subject' => 'Hey', 'send_at' => $date, 'config' => 'other', 'template' => 'custom', 'layout' => 'email']
+            ['subject' => 'Hey', 'send_at' => $date, 'config' => 'other', 'template' => 'custom', 'layout' => 'email'],
         );
         $this->assertTrue($result);
         $email = $this->EmailQueue->find()

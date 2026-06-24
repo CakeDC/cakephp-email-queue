@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace EmailQueue\Database\Type;
 
-use Cake\Database\DriverInterface;
+use Cake\Database\Driver;
 use Cake\Database\Type\BaseType;
 use Cake\Database\Type\OptionalConvertInterface;
 
@@ -13,13 +13,13 @@ class JsonType extends BaseType implements OptionalConvertInterface
      * Decodes a JSON string
      *
      * @param mixed $value json string to decode
-     * @param \Cake\Database\DriverInterface $driver database driver
-     * @return mixed|null|string|void
+     * @param \Cake\Database\Driver $driver database driver
+     * @return mixed
      */
-    public function toPHP($value, DriverInterface $driver)
+    public function toPHP(mixed $value, Driver $driver): mixed
     {
         if ($value === null) {
-            return;
+            return null;
         }
 
         return json_decode($value, true);
@@ -29,9 +29,9 @@ class JsonType extends BaseType implements OptionalConvertInterface
      * Marshal - Decodes a JSON string
      *
      * @param mixed $value json string to decode
-     * @return mixed|null|string
+     * @return mixed
      */
-    public function marshal($value)
+    public function marshal(mixed $value): mixed
     {
         if (is_array($value) || $value === null) {
             return $value;
@@ -44,10 +44,10 @@ class JsonType extends BaseType implements OptionalConvertInterface
      * Returns the JSON representation of a value
      *
      * @param mixed $value string or object to encode
-     * @param \Cake\Database\DriverInterface $driver database driver
-     * @return null|string
+     * @param \Cake\Database\Driver $driver database driver
+     * @return mixed
      */
-    public function toDatabase($value, DriverInterface $driver): ?string
+    public function toDatabase(mixed $value, Driver $driver): mixed
     {
         return json_encode($value);
     }

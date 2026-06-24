@@ -1,7 +1,7 @@
 <?php
-use Migrations\AbstractMigration;
+use Migrations\BaseMigration;
 
-class AddErrorMessage extends AbstractMigration
+class AddErrorMessage extends BaseMigration
 {
     public function change()
     {

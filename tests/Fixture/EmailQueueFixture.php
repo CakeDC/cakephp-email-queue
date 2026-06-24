@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace EmailQueue\Test\Fixture;
 
@@ -9,14 +10,14 @@ use Cake\TestSuite\Fixture\TestFixture;
  */
 class EmailQueueFixture extends TestFixture
 {
-    public $table = 'email_queue';
+    public string $table = 'email_queue';
 
     /**
      * Records.
      *
      * @var array
      */
-    public $records = [
+    public array $records = [
         [
             'id' => '1',
             'email' => 'example@example.com',
