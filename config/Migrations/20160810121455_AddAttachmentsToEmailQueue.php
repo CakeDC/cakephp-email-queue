@@ -1,7 +1,7 @@
 <?php
-use Migrations\AbstractMigration;
+use Migrations\BaseMigration;
 
-class AddAttachmentsToEmailQueue extends AbstractMigration
+class AddAttachmentsToEmailQueue extends BaseMigration
 {
     /**
      * Change Method.

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace EmailQueue\Database\Type;
 
-use Cake\Database\DriverInterface;
+use Cake\Database\Driver;
 use Cake\Database\Type\BaseType;
 use Cake\Database\Type\OptionalConvertInterface;
 
@@ -13,10 +13,10 @@ class SerializeType extends BaseType implements OptionalConvertInterface
      * Creates a PHP value from a stored representation
      *
      * @param mixed $value to unserialize
-     * @param \Cake\Database\DriverInterface $driver database driver
-     * @return mixed|null|string|void
+     * @param \Cake\Database\Driver $driver database driver
+     * @return mixed
      */
-    public function toPHP($value, DriverInterface $driver)
+    public function toPHP(mixed $value, Driver $driver): mixed
     {
         if ($value === null) {
             return null;
@@ -30,9 +30,9 @@ class SerializeType extends BaseType implements OptionalConvertInterface
      *
      * @param mixed $value to serialize
      * @param \Cake\Database\Driver $driver database driver
-     * @return null|string
+     * @return mixed
      */
-    public function toDatabase($value, DriverInterface $driver): ?string
+    public function toDatabase(mixed $value, Driver $driver): mixed
     {
         if ($value === null || is_string($value)) {
             return $value;
@@ -49,9 +49,9 @@ class SerializeType extends BaseType implements OptionalConvertInterface
      * Marshal - Return the value as is
      *
      * @param mixed $value php object
-     * @return mixed|null|string
+     * @return mixed
      */
-    public function marshal($value)
+    public function marshal(mixed $value): mixed
     {
         return $value;
     }

@@ -1,54 +1,49 @@
 <?php
 declare(strict_types=1);
 
-namespace EmailQueue\Test\Shell;
+namespace EmailQueue\Test\TestCase\Command;
 
+use Cake\Console\Arguments;
 use Cake\Console\ConsoleIo;
 use Cake\Console\ConsoleOutput;
 use Cake\Mailer\Transport\MailTransport;
 use Cake\Network\Exception\SocketException;
 use Cake\ORM\TableRegistry;
-use Cake\TestSuite\ConsoleIntegrationTestTrait;
 use Cake\TestSuite\TestCase;
+use EmailQueue\Command\ClearLocksCommand;
+use EmailQueue\Command\SenderCommand;
 use EmailQueue\Model\Table\EmailQueueTable;
-use EmailQueue\Shell\SenderShell;
+use EmailQueue\Test\Fixture\EmailQueueFixture;
 use TestApp\Mailer\TestMailer;
 
 /**
- * SenderShell Test Case.
+ * SenderCommand Test Case.
  */
-class SenderShellTest extends TestCase
+class SenderCommandTest extends TestCase
 {
-    use ConsoleIntegrationTestTrait;
+    /**
+     * @var \Cake\Console\ConsoleOutput
+     */
+    protected ConsoleOutput $out;
 
     /**
-     * @var ConsoleOutput
+     * @var \Cake\Console\ConsoleIo
      */
-    protected $io;
-
-    /**
-     * @var MockObject
-     */
-    protected $out;
-
-    /**
-     * @var MockObject
-     */
-    protected $Sender;
+    protected ConsoleIo $io;
 
     /**
      * Fixtures.
      *
-     * @var array
+     * @var array<class-string>
      */
-    public $fixtures = [
-        'plugin.EmailQueue.EmailQueue',
+    protected array $fixtures = [
+        EmailQueueFixture::class,
     ];
 
     /**
-     * @var EmailQueueTable
+     * @var \EmailQueue\Model\Table\EmailQueueTable
      */
-    protected $EmailQueue;
+    protected EmailQueueTable $EmailQueue;
 
     /**
      * setUp method.
@@ -57,50 +52,53 @@ class SenderShellTest extends TestCase
     {
         parent::setUp();
         $this->out = new ConsoleOutput();
-        $this->out = $this->getMockBuilder(ConsoleOutput::class)
-            ->setMethods(['write'])
-            ->disableOriginalConstructor()
-            ->getMock();
         $this->io = new ConsoleIo($this->out, $this->out);
-
-        $this->Sender = $this->getMockBuilder(SenderShell::class)
-            ->setMethods(['in', 'createFile', '_stop', '_newEmail'])
-            ->setConstructorArgs([$this->io])
-            ->getMock();
-
-        $this->Sender->params = [
-            'limit' => 10,
-            'template' => 'default',
-            'layout' => 'default',
-            'config' => 'default',
-            'stagger' => false,
-        ];
 
         $this->EmailQueue = TableRegistry::getTableLocator()
             ->get('EmailQueue', ['className' => EmailQueueTable::class]);
     }
 
-    public function tearDown(): void
+    /**
+     * @return \EmailQueue\Command\SenderCommand&\PHPUnit\Framework\MockObject\MockObject
+     */
+    protected function createSenderMock(): SenderCommand
     {
-        parent::tearDown();
-        unset($this->Sender);
+        return $this->getMockBuilder(SenderCommand::class)
+            ->onlyMethods(['newEmail'])
+            ->getMock();
     }
 
-    public function testMainAllWin()
+    /**
+     * @return \Cake\Console\Arguments
+     */
+    protected function createSenderArguments(): Arguments
     {
+        return new Arguments([], [
+            'limit' => '10',
+            'template' => 'default',
+            'layout' => 'default',
+            'config' => 'default',
+            'stagger' => '0',
+        ], []);
+    }
+
+    public function testMainAllWin(): void
+    {
+        $sender = $this->createSenderMock();
         $email = new TestMailer();
         $email->setTo('you@example.com')
             ->setSubject('About');
 
-        $this->Sender->expects($this->exactly(3))
-            ->method('_newEmail')
-            ->will($this->returnValue($email));
+        $sender->expects($this->exactly(3))
+            ->method('newEmail')
+            ->willReturn($email);
 
-        $this->Sender->main();
+        $sender->sendQueuedEmails($this->createSenderArguments(), $this->io);
 
         $emails = $this->EmailQueue
             ->find()
-            ->where(['id IN' => ['email-1', 'email-2', 'email-3']])
+            ->where(['id IN' => [1, 2, 3]])
+            ->all()
             ->toList();
 
         $this->assertEquals(1, $emails[0]['send_tries']);
@@ -116,31 +114,33 @@ class SenderShellTest extends TestCase
         $this->assertTrue($emails[2]['sent']);
     }
 
-    public function testMainAllFail()
+    public function testMainAllFail(): void
     {
+        $sender = $this->createSenderMock();
         $transport = $this->getMockBuilder(MailTransport::class)
             ->onlyMethods(['send'])
             ->getMock();
 
         $transport->expects($this->exactly(3))
             ->method('send')
-            ->will($this->throwException(new SocketException('fail')));
+            ->willThrowException(new SocketException('fail'));
 
         $email = new TestMailer();
         $email->setTo('you@example.com')
             ->setSubject('About')
             ->setTransport($transport);
 
-        $this->Sender->expects($this->exactly(3))
-            ->method('_newEmail')
+        $sender->expects($this->exactly(3))
+            ->method('newEmail')
             ->with('default')
-            ->will($this->returnValue($email));
+            ->willReturn($email);
 
-        $this->Sender->main();
+        $sender->sendQueuedEmails($this->createSenderArguments(), $this->io);
 
         $emails = $this->EmailQueue
             ->find()
-            ->where(['id IN' => ['email-1', 'email-2', 'email-3']])
+            ->where(['id IN' => [1, 2, 3]])
+            ->all()
             ->toList();
 
         $this->assertEquals(2, $emails[0]['send_tries']);
@@ -156,10 +156,11 @@ class SenderShellTest extends TestCase
         $this->assertFalse($emails[2]['sent']);
     }
 
-    public function testClearLocks()
+    public function testClearLocks(): void
     {
         $this->EmailQueue->getBatch();
-        $this->Sender->clearLocks();
+        $command = new ClearLocksCommand();
+        $command->execute(new Arguments([], [], []), $this->io);
         $this->assertEmpty($this->EmailQueue->findByLocked(true)->toArray());
     }
 }

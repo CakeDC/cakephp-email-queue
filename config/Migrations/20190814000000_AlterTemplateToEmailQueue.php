@@ -1,8 +1,8 @@
 <?php
-use Migrations\AbstractMigration;
+use Migrations\BaseMigration;
 use Phinx\Db\Adapter\MysqlAdapter;
 
-class AlterTemplateToEmailQueue extends AbstractMigration
+class AlterTemplateToEmailQueue extends BaseMigration
 {
     /**
      * Up Method

@@ -7,6 +7,7 @@ use Cake\Mailer\Mailer;
 
 /**
  * Fake TestMailer to test transport without rendering
+ *
  * @package EmailQueue\Test\TestCase\Mailer
  */
 class TestMailer extends Mailer
@@ -14,10 +15,10 @@ class TestMailer extends Mailer
     /**
      * Override deliver method to skip mail rendering
      *
-     * @param string $content
-     * @return array
+     * @param string $content Email content.
+     * @return array<string, mixed>
      */
-    public function deliver(string $content = '')
+    public function deliver(string $content = ''): array
     {
         return $this->getTransport()->send($this->message);
     }

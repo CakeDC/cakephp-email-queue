@@ -3,15 +3,18 @@ declare(strict_types=1);
 
 namespace EmailQueue\Model\Table;
 
+use Cake\Collection\Collection;
+use Cake\Collection\CollectionInterface;
 use Cake\Core\Configure;
 use Cake\Database\Expression\QueryExpression;
 use Cake\Database\Schema\TableSchemaInterface;
-use Cake\Database\Type;
-use Cake\I18n\FrozenTime;
+use Cake\Database\TypeFactory;
+use Cake\I18n\DateTime;
 use Cake\ORM\Table;
 use EmailQueue\Database\Type\JsonType;
 use EmailQueue\Database\Type\SerializeType;
 use LengthException;
+use Traversable;
 
 /**
  * EmailQueue Table.
@@ -21,12 +24,12 @@ class EmailQueueTable extends Table
     public const MAX_TEMPLATE_LENGTH = 100;
 
     /**
-     * {@inheritdoc}
+     * @inheritDoc
      */
     public function initialize(array $config = []): void
     {
-        Type::map('email_queue.json', JsonType::class);
-        Type::map('email_queue.serialize', SerializeType::class);
+        TypeFactory::map('email_queue.json', JsonType::class);
+        TypeFactory::map('email_queue.serialize', SerializeType::class);
         $this->addBehavior(
             'Timestamp',
             [
@@ -36,7 +39,7 @@ class EmailQueueTable extends Table
                     'modified' => 'always',
                 ],
             ],
-            ]
+            ],
         );
     }
 
@@ -53,12 +56,11 @@ class EmailQueueTable extends Table
      * - layout : the name of the layout to be used to wrap email message
      * - format: Type of template to use (html, text or both)
      * - config : the name of the email config to be used for sending
-     *
      * @throws \Exception any exception raised in transactional callback
      * @throws \LengthException If `template` option length is greater than maximum allowed length
      * @return bool
      */
-    public function enqueue($to, array $data, array $options = []): bool
+    public function enqueue(mixed $to, array $data, array $options = []): bool
     {
         if (array_key_exists('template', $options) && strlen($options['template']) > self::MAX_TEMPLATE_LENGTH) {
             throw new LengthException('`template` length must be less or equal to ' . self::MAX_TEMPLATE_LENGTH);
@@ -66,7 +68,7 @@ class EmailQueueTable extends Table
 
         $defaults = [
             'subject' => '',
-            'send_at' => new FrozenTime('now'),
+            'send_at' => new DateTime('now'),
             'template' => 'default',
             'layout' => 'default',
             'theme' => '',
@@ -90,7 +92,7 @@ class EmailQueueTable extends Table
         $emails = $this->newEntities($emails);
 
         return $this->getConnection()->transactional(function () use ($emails) {
-            $failure = collection($emails)
+            $failure = (new Collection($emails))
                 ->map(function ($email) {
                     return $this->save($email);
                 })
@@ -107,22 +109,23 @@ class EmailQueueTable extends Table
      * @throws \Exception any exception raised in transactional callback
      * @return array list of unsent emails
      */
-    public function getBatch($size = 10): array
+    public function getBatch(int|string $size = 10): array
     {
         return $this->getConnection()->transactional(function () use ($size) {
             $emails = $this->find()
                 ->where([
                     $this->aliasField('sent') => false,
                     $this->aliasField('send_tries') . ' <=' => 3,
-                    $this->aliasField('send_at') . ' <=' => new FrozenTime('now'),
+                    $this->aliasField('send_at') . ' <=' => new DateTime('now'),
                     $this->aliasField('locked') => false,
                 ])
                 ->limit($size)
-                ->order([$this->aliasField('created') => 'ASC']);
+                ->orderBy([$this->aliasField('created') => 'ASC'])
+                ->all();
 
             $emails
                 ->extract('id')
-                ->through(function (\Cake\Collection\CollectionInterface $ids) {
+                ->through(function (CollectionInterface $ids) {
                     if (!$ids->isEmpty()) {
                         $this->updateAll(['locked' => true], ['id IN' => $ids->toList()]);
                     }
@@ -138,10 +141,9 @@ class EmailQueueTable extends Table
      * Releases locks for all emails in $ids.
      *
      * @param array|\Traversable $ids The email ids to unlock
-     *
      * @return void
      */
-    public function releaseLocks($ids): void
+    public function releaseLocks(array|Traversable $ids): void
     {
         $this->updateAll(['locked' => false], ['id IN' => $ids]);
     }
@@ -159,10 +161,10 @@ class EmailQueueTable extends Table
     /**
      * Marks an email from the queue as sent.
      *
-     * @param string $id queued email id
+     * @param string|int $id queued email id
      * @return void
      */
-    public function success($id): void
+    public function success(string|int $id): void
     {
         $this->updateAll(['sent' => true], ['id' => $id]);
     }
@@ -170,11 +172,11 @@ class EmailQueueTable extends Table
     /**
      * Marks an email from the queue as failed, and increments the number of tries.
      *
-     * @param string $id queued email id
-     * @param string $error message
+     * @param string|int $id queued email id
+     * @param string|null $error message
      * @return void
      */
-    public function fail($id, $error = null): void
+    public function fail(string|int $id, ?string $error = null): void
     {
         $this->updateAll(
             [
@@ -183,22 +185,24 @@ class EmailQueueTable extends Table
             ],
             [
                 'id' => $id,
-            ]
+            ],
         );
     }
 
     /**
      * Sets the column type for template_vars and headers to json.
      *
-     * @param \Cake\Database\Schema\TableSchemaInterface $schema The table description
-     * @return \Cake\Database\Schema\TableSchema
+     * @return \Cake\Database\Schema\TableSchemaInterface
      */
-    protected function _initializeSchema(TableSchemaInterface $schema): TableSchemaInterface
+    public function getSchema(): TableSchemaInterface
     {
+        $schema = parent::getSchema();
         $type = Configure::read('EmailQueue.serialization_type') ?: 'email_queue.serialize';
-        $schema->setColumnType('template_vars', $type);
-        $schema->setColumnType('headers', $type);
-        $schema->setColumnType('attachments', $type);
+        if ($schema->getColumnType('template_vars') !== $type) {
+            $schema->setColumnType('template_vars', $type);
+            $schema->setColumnType('headers', $type);
+            $schema->setColumnType('attachments', $type);
+        }
 
         return $schema;
     }
